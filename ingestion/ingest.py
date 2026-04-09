@@ -34,32 +34,27 @@ PIPELINE_VERSION = "1.0.0"
 # ── Spark session ─────────────────────────────────────────────────────────────
 
 def create_spark_session() -> SparkSession:
+    # Write Iceberg locally first — avoids GCS connector Guava conflict.
+    # After ingestion completes, gsutil syncs the local warehouse to GCS.
+    local_warehouse = str(Path(tempfile.gettempdir()) / "iceberg_warehouse")
+
     return (
         SparkSession.builder
         .appName("NYC Taxi Trust Layer — Ingestion")
         .config(
             "spark.jars.packages",
-            ",".join([
-                "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.2",
-                "com.google.cloud.bigdataoss:gcs-connector:hadoop3-2.2.20",
-            ]),
+            "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.2",
         )
         .config(
             "spark.sql.extensions",
             "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
         )
-        # Iceberg catalog backed by GCS (Hadoop catalog — no extra service needed)
+        # Iceberg catalog using local filesystem (synced to GCS after ingestion)
         .config(f"spark.sql.catalog.{settings.ICEBERG_CATALOG}",
                 "org.apache.iceberg.spark.SparkCatalog")
         .config(f"spark.sql.catalog.{settings.ICEBERG_CATALOG}.type", "hadoop")
         .config(f"spark.sql.catalog.{settings.ICEBERG_CATALOG}.warehouse",
-                settings.GCS_WAREHOUSE_PATH)
-        # GCS auth
-        .config("spark.hadoop.fs.gs.impl",
-                "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem")
-        .config("spark.hadoop.google.cloud.auth.service.account.enable", "true")
-        .config("spark.hadoop.google.cloud.auth.service.account.json.keyfile",
-                settings.GOOGLE_APPLICATION_CREDENTIALS)
+                local_warehouse)
         .getOrCreate()
     )
 
@@ -268,8 +263,9 @@ def ingest_source(spark: SparkSession, source: TLCSource, tracker: LineageTracke
             normalized_df.columns, prev_columns
         )
 
-        # 5. Append to Iceberg table
-        normalized_df.writeTo(settings.iceberg_full_table).append()
+        # 5. Write to Iceberg — overwrite this partition if it already exists
+        # (idempotent: safe to re-run without creating duplicates)
+        normalized_df.writeTo(settings.iceberg_full_table).overwritePartitions()
         transformation_steps.append("write_iceberg")
         logger.info(f"Written to Iceberg: {settings.iceberg_full_table}")
 
@@ -324,6 +320,16 @@ def run_ingestion(targets: list[str] | None = None):
     targets = targets or settings.INGEST_TARGETS
     sources = build_sources(targets)
 
+    # Log to file — keeps terminal clean, full detail in logs/ingestion.log
+    log_path = Path("logs/ingestion.log")
+    log_path.parent.mkdir(exist_ok=True)
+    logger.remove()  # remove default stderr handler
+    logger.add(str(log_path), level="DEBUG", rotation="10 MB", retention=3)
+    logger.add(lambda msg: print(msg, end=""), level="INFO",
+               format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | {message}")
+
+    logger.info(f"Starting ingestion — targets: {targets}")
+
     # Shared temp dir so files aren't re-downloaded if the run is restarted
     temp_dir = Path(tempfile.gettempdir()) / "tlc_downloads"
     temp_dir.mkdir(parents=True, exist_ok=True)
@@ -335,7 +341,21 @@ def run_ingestion(targets: list[str] | None = None):
         ingest_source(spark, source, tracker, temp_dir=temp_dir)
 
     spark.stop()
-    logger.info("Ingestion complete.")
+
+    # Sync local Iceberg warehouse to GCS
+    local_warehouse = Path(tempfile.gettempdir()) / "iceberg_warehouse"
+    logger.info(f"Syncing Iceberg warehouse to GCS: {settings.GCS_WAREHOUSE_PATH}")
+    import subprocess
+    result = subprocess.run(
+        ["gsutil", "-m", "rsync", "-r", str(local_warehouse), settings.GCS_WAREHOUSE_PATH],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        logger.error(f"gsutil sync failed: {result.stderr}")
+    else:
+        logger.info("GCS sync complete.")
+
+    logger.info(f"Ingestion complete. Full log: {log_path.resolve()}")
 
 
 if __name__ == "__main__":

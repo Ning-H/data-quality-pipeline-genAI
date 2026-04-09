@@ -24,6 +24,9 @@ dbt/target/
 dbt/dbt_packages/
 dbt/logs/
 
+# Logs
+logs/
+
 # Airflow
 airflow/logs/
 airflow/plugins/
