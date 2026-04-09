@@ -15,9 +15,6 @@ db-dtypes==1.2.0
 dbt-core==1.7.9
 dbt-bigquery==1.7.7
 
-# Airflow (installed separately via Docker)
-apache-airflow==2.8.4
-
 # LLM
 openai==1.30.1
 
