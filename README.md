@@ -4,16 +4,16 @@
 > Most tools check nulls and types. This project answers the question that actually matters:
 > *"Can I trust this data to make a decision?"*
 
-[![CI](https://github.com/YOUR_USERNAME/nyc-taxi-trust-layer/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/nyc-taxi-trust-layer/actions)
+[![CI](https://github.com/Ning-H/data-quality-pipeline-genAI/actions/workflows/ci.yml/badge.svg)](https://github.com/Ning-H/data-quality-pipeline-genAI/actions)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://python.org)
 [![dbt](https://img.shields.io/badge/dbt-1.7-orange.svg)](https://getdbt.com)
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://YOUR_USERNAME-nyc-taxi-trust.streamlit.app)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://ning-h-data-quality-pipeline-genai.streamlit.app)
 
 ---
 
 ## Live Demo
 
-**[nyc-taxi-trust.streamlit.app](https://YOUR_USERNAME-nyc-taxi-trust.streamlit.app)**
+**[ning-h-data-quality-pipeline-genai.streamlit.app](https://ning-h-data-quality-pipeline-genai.streamlit.app)**
 
 ---
 
@@ -119,8 +119,8 @@ The dataset has undergone three real schema changes that make it a perfect trust
 ### 1. Clone and configure
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/nyc-taxi-trust-layer.git
-cd nyc-taxi-trust-layer
+git clone https://github.com/Ning-H/data-quality-pipeline-genAI.git
+cd data-quality-pipeline-genAI
 cp .env.example .env
 # Fill in your values in .env
 ```
