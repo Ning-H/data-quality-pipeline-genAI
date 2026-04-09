@@ -63,7 +63,7 @@ Full architecture details: [`docs/architecture.md`](docs/architecture.md)
 | Warehouse | BigQuery + BigLake |
 | Transforms | dbt Core |
 | Orchestration | Apache Airflow (Docker) |
-| LLM | Claude Haiku (Anthropic API) |
+| LLM | GPT-4o mini (OpenAI API) |
 | Dashboard | Streamlit Cloud |
 | CI/CD | GitHub Actions |
 
@@ -114,7 +114,7 @@ The dataset has undergone three real schema changes that make it a perfect trust
 - Python 3.11+
 - Docker + Docker Compose (for Airflow)
 - GCP project with BigQuery and GCS enabled
-- Anthropic API key
+- OpenAI API key ([platform.openai.com/api-keys](https://platform.openai.com/api-keys))
 
 ### 1. Clone and configure
 
@@ -170,4 +170,4 @@ pytest tests/ -v
 ## Cost
 
 Running this project costs approximately **$0** on GCP and Streamlit free tiers.
-The only variable cost is the Anthropic API — approximately **$0.05 per full pipeline run** using Claude Haiku.
+The only variable cost is the OpenAI API — approximately **$0.01 per full pipeline run** using GPT-4o mini.

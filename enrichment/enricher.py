@@ -13,7 +13,7 @@ Run order:
 import json
 from datetime import datetime, timezone
 
-import anthropic
+import openai
 from google.cloud import bigquery
 from loguru import logger
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -36,7 +36,7 @@ from enrichment.trust_scorer import (
 
 NARRATIVES_TABLE = f"{settings.GCP_PROJECT_ID}.{settings.BQ_DATASET}.trust_narratives"
 
-_anthropic = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+_openai = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
 _bq = bigquery.Client(project=settings.GCP_PROJECT_ID)
 
 
@@ -60,19 +60,21 @@ def _ensure_narratives_table():
 # ── Claude call ───────────────────────────────────────────────────────────────
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-def _call_claude(user_prompt: str) -> tuple[str, int, int]:
+def _call_llm(user_prompt: str) -> tuple[str, int, int]:
     """
-    Call Claude Haiku and return (response_text, prompt_tokens, completion_tokens).
+    Call GPT-4o mini and return (response_text, prompt_tokens, completion_tokens).
     Retries up to 3 times on failure with exponential backoff.
     """
-    response = _anthropic.messages.create(
-        model=settings.ANTHROPIC_MODEL,
+    response = _openai.chat.completions.create(
+        model=settings.OPENAI_MODEL,
         max_tokens=1024,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_prompt}],
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ],
     )
-    text = response.content[0].text
-    return text, response.usage.input_tokens, response.usage.output_tokens
+    text = response.choices[0].message.content
+    return text, response.usage.prompt_tokens, response.usage.completion_tokens
 
 
 def _write_narrative(pain_point: str, data_year: int | None, narrative: str,
@@ -81,7 +83,7 @@ def _write_narrative(pain_point: str, data_year: int | None, narrative: str,
         "pain_point": pain_point,
         "data_year": data_year,
         "narrative_json": narrative,
-        "model": settings.ANTHROPIC_MODEL,
+        "model": settings.OPENAI_MODEL,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "prompt_tokens": prompt_tokens,
         "completion_tokens": completion_tokens,
@@ -102,7 +104,7 @@ def enrich_lineage():
         logger.warning("No lineage history found — skipping")
         return
     prompt = lineage_prompt(history)
-    text, pt, ct = _call_claude(prompt)
+    text, pt, ct = _call_llm(prompt)
     _write_narrative("lineage", None, text, pt, ct)
 
 
@@ -114,7 +116,7 @@ def enrich_business_context(year: int):
         return
     columns = list(sample[0].keys()) if sample else []
     prompt = business_context_prompt(columns, sample)
-    text, pt, ct = _call_claude(prompt)
+    text, pt, ct = _call_llm(prompt)
     _write_narrative("business_context", year, text, pt, ct)
 
 
@@ -125,7 +127,7 @@ def enrich_trust_score(year: int):
         logger.warning(f"No trust metrics for year={year} — skipping")
         return
     prompt = trust_score_prompt(metrics[0])
-    text, pt, ct = _call_claude(prompt)
+    text, pt, ct = _call_llm(prompt)
     _write_narrative("trust_score", year, text, pt, ct)
 
 
@@ -138,7 +140,7 @@ def enrich_coverage_gaps(year: int):
     columns = list(sample[0].keys()) if sample else []
     context = "NYC yellow cab trip records from the Taxi and Limousine Commission (TLC)"
     prompt = coverage_gaps_prompt(columns, sample, context)
-    text, pt, ct = _call_claude(prompt)
+    text, pt, ct = _call_llm(prompt)
     _write_narrative("coverage_gaps", year, text, pt, ct)
 
 
@@ -149,7 +151,7 @@ def enrich_schema_evolution():
         logger.warning("No schema evolution records — skipping")
         return
     prompt = schema_evolution_prompt(evolution)
-    text, pt, ct = _call_claude(prompt)
+    text, pt, ct = _call_llm(prompt)
     _write_narrative("schema_evolution", None, text, pt, ct)
 
 

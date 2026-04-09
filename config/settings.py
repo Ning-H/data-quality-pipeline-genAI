@@ -24,9 +24,9 @@ class Settings:
     def iceberg_full_table(self) -> str:
         return f"{self.ICEBERG_CATALOG}.{self.ICEBERG_DATABASE}.{self.ICEBERG_TABLE}"
 
-    # Anthropic
-    ANTHROPIC_API_KEY: str = os.environ["ANTHROPIC_API_KEY"]
-    ANTHROPIC_MODEL: str = "claude-haiku-4-5-20251001"
+    # OpenAI
+    OPENAI_API_KEY: str = os.environ["OPENAI_API_KEY"]
+    OPENAI_MODEL: str = "gpt-4o-mini"
 
     # Pipeline
     INGEST_TARGETS: list[str] = os.getenv(
