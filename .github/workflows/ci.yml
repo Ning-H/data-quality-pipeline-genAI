@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install ruff pytest pytest-mock
+          # Install project deps excluding heavy Spark/Airflow (not needed for unit tests)
+          pip install anthropic google-cloud-bigquery google-cloud-storage \
+            python-dotenv pydantic loguru tenacity pyarrow pandas
+
+      - name: Lint with ruff
+        run: ruff check . --exclude airflow/
+
+      - name: Run unit tests
+        env:
+          GCP_PROJECT_ID: test-project
+          GCS_BUCKET: test-bucket
+          GCS_WAREHOUSE_PATH: gs://test-bucket/warehouse
+          GOOGLE_APPLICATION_CREDENTIALS: /dev/null
+          BQ_DATASET: nyc_taxi_trust
+          BQ_LOCATION: US
+          ANTHROPIC_API_KEY: test-key
+          INGEST_TARGETS: "2022-01"
+        run: pytest tests/ -v
+
+  dbt-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dbt
+        run: pip install dbt-core dbt-bigquery
+
+      - name: dbt parse (validates SQL syntax without running)
+        working-directory: dbt
+        env:
+          GCP_PROJECT_ID: test-project
+          GOOGLE_APPLICATION_CREDENTIALS: /dev/null
+          BQ_DATASET: nyc_taxi_trust
+          BQ_LOCATION: US
+        run: dbt parse --profiles-dir . --project-dir .

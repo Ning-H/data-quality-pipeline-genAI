@@ -1,0 +1,20 @@
+version: 2
+
+sources:
+  - name: iceberg
+    description: "Iceberg tables on GCS exposed to BigQuery via BigLake external tables"
+    database: "{{ env_var('GCP_PROJECT_ID') }}"
+    schema: nyc_taxi_trust
+    tables:
+      - name: yellow_trips_external
+        description: >
+          NYC yellow cab trips 2015–2022, stored as Apache Iceberg on GCS.
+          Includes 4 schema versions (GPS coords → zone IDs → congestion surcharge → airport fee).
+          Historical nulls in GPS/zone columns are STRUCTURAL (schema change), not data errors.
+        columns:
+          - name: schema_version
+            description: "Which TLC schema era this row came from: gps | zone | zone_v2 | zone_v3"
+          - name: pickup_longitude
+            description: "GPS longitude of pickup. NULL for all rows from 2016 onwards (replaced by pu_location_id)."
+          - name: pu_location_id
+            description: "TLC zone ID of pickup. NULL for all rows from 2015 and earlier (GPS era)."

@@ -1,0 +1,33 @@
+# Core
+pyspark==3.5.1
+pyarrow==14.0.2
+
+# Iceberg
+pyiceberg[gcs]==0.6.1
+
+# GCP
+google-cloud-storage==2.14.0
+google-cloud-bigquery==3.17.2
+google-cloud-bigquery-storage==2.24.0
+db-dtypes==1.2.0
+
+# dbt
+dbt-core==1.7.9
+dbt-bigquery==1.7.7
+
+# Airflow (installed separately via Docker)
+apache-airflow==2.8.4
+
+# LLM
+anthropic==0.25.0
+
+# Streamlit
+streamlit==1.33.0
+plotly==5.20.0
+pandas==2.2.1
+
+# Utils
+python-dotenv==1.0.1
+pydantic==2.6.4
+loguru==0.7.2
+tenacity==8.2.3

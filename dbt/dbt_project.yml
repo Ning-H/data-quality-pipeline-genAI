@@ -1,0 +1,22 @@
+name: nyc_taxi_trust
+version: "1.0.0"
+config-version: 2
+
+profile: nyc_taxi_trust
+
+model-paths: ["models"]
+test-paths: ["tests"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  nyc_taxi_trust:
+    staging:
+      +materialized: view
+      +dataset: nyc_taxi_trust_staging
+    quality:
+      +materialized: table
+      +dataset: nyc_taxi_trust
+    trust:
+      +materialized: table
+      +dataset: nyc_taxi_trust
