@@ -1,17 +1,16 @@
 """
-Ingestion layer — reads TLC yellow cab data (CSV or Parquet),
-normalizes to a unified schema, and writes to an Apache Iceberg
-table on GCS via PySpark.
+Ingestion layer — downloads TLC yellow cab Parquet files from CloudFront,
+normalizes to a unified schema, and writes to an Apache Iceberg table on GCS.
 
-Supported sources:
-  - 2015-01 CSV  (GPS coords schema)   from public S3
-  - 2017-01 CSV  (Zone IDs schema)     from public S3
-  - 2019-01 CSV  (Zone IDs + surcharge) from public S3
-  - 2022-01 Parquet (Zone IDs + airport_fee) from TLC CloudFront
+All years are now served as Parquet from TLC CloudFront (including historical data).
+Schema differences are in the columns, not the file format.
 """
 
 import json
 import uuid
+import tempfile
+import requests
+from pathlib import Path
 from datetime import datetime, timezone
 
 from pyspark.sql import SparkSession, DataFrame
@@ -61,11 +60,27 @@ def create_spark_session() -> SparkSession:
         .config("spark.hadoop.google.cloud.auth.service.account.enable", "true")
         .config("spark.hadoop.google.cloud.auth.service.account.json.keyfile",
                 settings.GOOGLE_APPLICATION_CREDENTIALS)
-        # S3 anonymous access for public TLC bucket
-        .config("spark.hadoop.fs.s3a.aws.credentials.provider",
-                "org.apache.hadoop.fs.s3a.AnonymousAWSCredentialsProvider")
         .getOrCreate()
     )
+
+
+# ── Download helper ───────────────────────────────────────────────────────────
+
+def _download_parquet(url: str, dest_dir: Path) -> Path:
+    """Download a Parquet file from CloudFront to a local temp directory."""
+    filename = url.split("/")[-1]
+    dest = dest_dir / filename
+    if dest.exists():
+        logger.info(f"Already downloaded: {dest}")
+        return dest
+    logger.info(f"Downloading {url} ...")
+    with requests.get(url, stream=True, timeout=300) as r:
+        r.raise_for_status()
+        with open(dest, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8 * 1024 * 1024):
+                f.write(chunk)
+    logger.info(f"Downloaded {dest.stat().st_size / 1e6:.1f} MB → {dest}")
+    return dest
 
 
 # ── Schema normalisation ──────────────────────────────────────────────────────
@@ -217,20 +232,21 @@ def _detect_schema_changes(
 
 # ── Main ingestion function ───────────────────────────────────────────────────
 
-def ingest_source(spark: SparkSession, source: TLCSource, tracker: LineageTracker):
+def ingest_source(spark: SparkSession, source: TLCSource, tracker: LineageTracker,
+                  temp_dir: Path | None = None):
     run_id = str(uuid.uuid4())
     logger.info(f"[{run_id}] Starting ingestion — {source.partition_key} ({source.schema_version})")
 
     transformation_steps = []
 
     try:
-        # 1. Read raw data
-        logger.info(f"Reading {source.file_format} from {source.url}")
-        if source.file_format == FileFormat.PARQUET:
-            raw_df = spark.read.parquet(source.url)
-        else:
-            raw_df = spark.read.option("header", "true").option("inferSchema", "true").csv(source.url)
+        # 1. Download Parquet from CloudFront to local temp dir, then read with Spark
+        download_dir = temp_dir or Path(tempfile.gettempdir()) / "tlc_downloads"
+        download_dir.mkdir(parents=True, exist_ok=True)
+        local_path = _download_parquet(source.url, download_dir)
 
+        logger.info(f"Reading Parquet from local path: {local_path}")
+        raw_df = spark.read.parquet(str(local_path))
         raw_columns = raw_df.columns
         transformation_steps.append(f"read_{source.file_format.value}")
         logger.info(f"Raw rows: {raw_df.count():,}  columns: {len(raw_columns)}")
@@ -308,11 +324,15 @@ def run_ingestion(targets: list[str] | None = None):
     targets = targets or settings.INGEST_TARGETS
     sources = build_sources(targets)
 
+    # Shared temp dir so files aren't re-downloaded if the run is restarted
+    temp_dir = Path(tempfile.gettempdir()) / "tlc_downloads"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+
     spark = create_spark_session()
     tracker = LineageTracker()
 
     for source in sources:
-        ingest_source(spark, source, tracker)
+        ingest_source(spark, source, tracker, temp_dir=temp_dir)
 
     spark.stop()
     logger.info("Ingestion complete.")

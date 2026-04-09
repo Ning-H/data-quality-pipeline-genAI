@@ -1,10 +1,12 @@
 """
 Source configurations for TLC yellow cab data.
 
-TLC changed file format and schema over the years:
-  - Pre-2016:  CSV,     GPS coordinates (pickup_longitude/latitude)
-  - 2016-2021: CSV,     Zone IDs (PULocationID / DOLocationID)
-  - 2022+:     Parquet, Zone IDs + airport_fee column
+TLC now hosts ALL historical data as Parquet on CloudFront (including pre-2016).
+Schema differences are in the data columns, not the file format:
+  - Pre-2016:  GPS coordinates (pickup_longitude/latitude)
+  - 2016-2021: Zone IDs (PULocationID / DOLocationID)
+  - 2019+:     + congestion_surcharge
+  - 2022+:     + airport_fee
 """
 
 from dataclasses import dataclass
@@ -33,10 +35,7 @@ class TLCSource:
     @property
     def url(self) -> str:
         filename = f"yellow_tripdata_{self.year}-{self.month:02d}"
-        if self.file_format == FileFormat.PARQUET:
-            return f"https://d37ci6vzurychx.cloudfront.net/trip-data/{filename}.parquet"
-        else:
-            return f"s3a://nyc-tlc/trip data/{filename}.csv"
+        return f"https://d37ci6vzurychx.cloudfront.net/trip-data/{filename}.parquet"
 
     @property
     def partition_key(self) -> str:
@@ -55,7 +54,7 @@ def _resolve_schema_version(year: int) -> SchemaVersion:
 
 
 def _resolve_format(year: int) -> FileFormat:
-    return FileFormat.PARQUET if year >= 2022 else FileFormat.CSV
+    return FileFormat.PARQUET  # TLC now hosts all years as Parquet on CloudFront
 
 
 def build_sources(targets: list[str]) -> list[TLCSource]:
