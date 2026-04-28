@@ -4,17 +4,15 @@ NYC Taxi Data Trust Layer — Streamlit Dashboard
 Entry point: streamlit run streamlit/app.py
 """
 
+
 import streamlit as st
-import json
-
 from enrichment.enricher import get_narratives
-from enrichment.trust_scorer import get_trust_metrics, get_quality_metrics
-
-from streamlit.components.lineage_card import render_lineage_card
+from enrichment.trust_scorer import get_quality_metrics, get_trust_metrics
 from streamlit.components.context_card import render_context_card
-from streamlit.components.trust_card import render_trust_card
 from streamlit.components.coverage_card import render_coverage_card
+from streamlit.components.lineage_card import render_lineage_card
 from streamlit.components.schema_evolution_card import render_schema_evolution_card
+from streamlit.components.trust_card import render_trust_card
 
 # ── Page config ───────────────────────────────────────────────────────────────
 

@@ -20,13 +20,22 @@ WITH quality AS (
 ),
 
 evolution AS (
+    -- One row per year — take the most recent ingestion record
     SELECT
         partition_key,
         is_schema_change,
         change_type,
         columns_added,
         columns_removed
-    FROM {{ ref('schema_evolution') }}
+    FROM (
+        SELECT *,
+            ROW_NUMBER() OVER (
+                PARTITION BY CAST(SPLIT(partition_key, '-')[OFFSET(0)] AS INT64)
+                ORDER BY ingested_at DESC
+            ) AS rn
+        FROM {{ ref('schema_evolution') }}
+    )
+    WHERE rn = 1
 ),
 
 validity AS (

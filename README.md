@@ -5,7 +5,7 @@
 > *"Can I trust this data to make a decision?"*
 
 [![CI](https://github.com/Ning-H/data-quality-pipeline-genAI/actions/workflows/ci.yml/badge.svg)](https://github.com/Ning-H/data-quality-pipeline-genAI/actions)
-[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://python.org)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://python.org)
 [![dbt](https://img.shields.io/badge/dbt-1.7-orange.svg)](https://getdbt.com)
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://ning-h-data-quality-pipeline-genai.streamlit.app)
 
@@ -80,7 +80,7 @@ The dataset has undergone three real schema changes that make it a perfect trust
 | 2015 | GPS coordinates (`pickup_longitude/latitude`) | Baseline |
 | 2016 | GPS replaced by zone IDs (`PULocationID/DOLocationID`) | Historical nulls in GPS columns are **structural**, not errors |
 | 2019 | `congestion_surcharge` added | Pre-2019 nulls are structural |
-| 2022 | `airport_fee` added + format changed CSV → Parquet | Additional structural nulls |
+| 2022 | `airport_fee` added | Additional structural nulls |
 
 **The key coverage gap:** Since 2017, Uber and Lyft handle 70%+ of NYC rides. This dataset passes every quality check and still cannot answer "how many people took a ride in NYC today?"
 
@@ -111,7 +111,7 @@ The dataset has undergone three real schema changes that make it a perfect trust
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.12+
 - Docker + Docker Compose (for Airflow)
 - GCP project with BigQuery and GCS enabled
 - OpenAI API key ([platform.openai.com/api-keys](https://platform.openai.com/api-keys))
@@ -148,7 +148,8 @@ docker-compose up -d
 python -m ingestion.ingest
 
 # Run dbt models
-cd dbt && dbt run --profiles-dir . --project-dir .
+set -a; source .env; set +a
+dbt run --profiles-dir dbt --project-dir dbt
 
 # Generate LLM trust narratives
 python -m enrichment.enricher

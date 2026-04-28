@@ -4,7 +4,6 @@ formats them for the LLM, and returns structured metric dicts.
 """
 
 from google.cloud import bigquery
-from loguru import logger
 
 from config import settings
 

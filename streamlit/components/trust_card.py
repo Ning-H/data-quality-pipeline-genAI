@@ -1,5 +1,6 @@
-import streamlit as st
 import plotly.graph_objects as go
+
+import streamlit as st
 
 
 def _score_color(score: float) -> str:

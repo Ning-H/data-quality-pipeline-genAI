@@ -1,16 +1,13 @@
 """Unit tests for the enrichment/prompts layer."""
 
-import json
-import pytest
 from enrichment.prompts import (
-    lineage_prompt,
-    business_context_prompt,
-    trust_score_prompt,
-    coverage_gaps_prompt,
-    schema_evolution_prompt,
     SYSTEM_PROMPT,
+    business_context_prompt,
+    coverage_gaps_prompt,
+    lineage_prompt,
+    schema_evolution_prompt,
+    trust_score_prompt,
 )
-
 
 SAMPLE_LINEAGE = [
     {

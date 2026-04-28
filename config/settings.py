@@ -1,4 +1,5 @@
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,6 +15,7 @@ class Settings:
     # BigQuery
     BQ_DATASET: str = os.getenv("BQ_DATASET", "nyc_taxi_trust")
     BQ_LOCATION: str = os.getenv("BQ_LOCATION", "US")
+    BIGLAKE_CONNECTION_ID: str = os.getenv("BIGLAKE_CONNECTION_ID", "f8b500bd-4da3-4023-8919-02fc2915d682")
 
     # Iceberg
     ICEBERG_CATALOG: str = os.getenv("ICEBERG_CATALOG", "nyc_taxi")

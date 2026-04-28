@@ -21,17 +21,17 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from config import settings
 from enrichment.prompts import (
     SYSTEM_PROMPT,
-    lineage_prompt,
     business_context_prompt,
-    trust_score_prompt,
     coverage_gaps_prompt,
+    lineage_prompt,
     schema_evolution_prompt,
+    trust_score_prompt,
 )
 from enrichment.trust_scorer import (
     get_lineage_history,
-    get_trust_metrics,
     get_sample_rows,
     get_schema_evolution,
+    get_trust_metrics,
 )
 
 NARRATIVES_TABLE = f"{settings.GCP_PROJECT_ID}.{settings.BQ_DATASET}.trust_narratives"

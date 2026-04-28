@@ -12,10 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: pip
 
       - name: Install dependencies
@@ -23,7 +23,7 @@ jobs:
           pip install --upgrade pip
           pip install ruff pytest pytest-mock
           # Install project deps excluding heavy Spark/Airflow (not needed for unit tests)
-          pip install anthropic google-cloud-bigquery google-cloud-storage \
+          pip install openai google-cloud-bigquery google-cloud-storage \
             python-dotenv pydantic loguru tenacity pyarrow pandas
 
       - name: Lint with ruff
@@ -37,7 +37,7 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: /dev/null
           BQ_DATASET: nyc_taxi_trust
           BQ_LOCATION: US
-          ANTHROPIC_API_KEY: test-key
+          OPENAI_API_KEY: test-key
           INGEST_TARGETS: "2022-01"
         run: pytest tests/ -v
 

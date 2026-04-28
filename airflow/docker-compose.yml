@@ -13,7 +13,7 @@ x-airflow-common: &airflow-common
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CORE__FERNET_KEY: ""
     AIRFLOW__WEBSERVER__SECRET_KEY: "nyc-taxi-trust-layer"
-    # Pass GCP and Anthropic credentials into the container
+    # Pass GCP and OpenAI credentials into the container
     GCP_PROJECT_ID: ${GCP_PROJECT_ID}
     GCS_BUCKET: ${GCS_BUCKET}
     GCS_WAREHOUSE_PATH: ${GCS_WAREHOUSE_PATH}
@@ -22,7 +22,7 @@ x-airflow-common: &airflow-common
     ICEBERG_CATALOG: ${ICEBERG_CATALOG}
     ICEBERG_DATABASE: ${ICEBERG_DATABASE}
     ICEBERG_TABLE: ${ICEBERG_TABLE}
-    ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    OPENAI_API_KEY: ${OPENAI_API_KEY}
     INGEST_TARGETS: ${INGEST_TARGETS}
     GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/secrets/service-account.json
   volumes:
@@ -32,6 +32,7 @@ x-airflow-common: &airflow-common
     - ../enrichment:/opt/airflow/enrichment
     - ../config:/opt/airflow/config
     - ../logs:/opt/airflow/logs
+    - ../requirements.txt:/opt/airflow/requirements.txt:ro
     - ${GOOGLE_APPLICATION_CREDENTIALS}:/opt/airflow/secrets/service-account.json:ro
   depends_on:
     postgres:
@@ -65,9 +66,6 @@ services:
           --role Admin
           --email admin@example.com
       "
-    volumes:
-      - ../requirements.txt:/opt/airflow/requirements.txt
-      - *airflow-common
 
   airflow-webserver:
     <<: *airflow-common

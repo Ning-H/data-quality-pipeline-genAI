@@ -1,5 +1,6 @@
-import streamlit as st
 import plotly.graph_objects as go
+
+import streamlit as st
 
 
 def render_schema_evolution_card(narrative: dict, metrics_by_year: list[dict] | None = None):

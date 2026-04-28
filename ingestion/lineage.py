@@ -6,14 +6,12 @@ This gives the LLM real metadata to generate lineage narratives from —
 not fabricated, but actual pipeline history.
 """
 
-from datetime import datetime, timezone
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 
 from google.cloud import bigquery
 from loguru import logger
 
 from config import settings
-
 
 LINEAGE_TABLE = f"{settings.GCP_PROJECT_ID}.{settings.BQ_DATASET}.pipeline_lineage"
 
