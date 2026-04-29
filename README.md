@@ -19,7 +19,9 @@
 
 ## What It Does
 
-This pipeline ingests 7 years of NYC yellow cab trip data, tracks how the dataset changed over time, and uses an LLM to generate plain-English trust narratives across five dimensions:
+This pipeline ingests NYC yellow cab trip data across multiple schema eras, tracks how the dataset changed over time, computes trust metrics with dbt, and uses an LLM to generate plain-English narratives. The Streamlit app turns those signals into a decision dashboard: what changed, what can be trusted, where the data is misleading, and what business story the numbers support.
+
+### Trust Layer
 
 | Dimension | Question Answered |
 |---|---|
@@ -28,6 +30,18 @@ This pipeline ingests 7 years of NYC yellow cab trip data, tracks how the datase
 | **Trust Score** | Can I rely on it — and why does it score what it scores? |
 | **Coverage Gaps** | What can't this data answer that people assume it can? |
 | **Schema Evolution** | What changed across years, and what does that break? |
+
+### Decision Dashboard
+
+| View | What It Adds |
+|---|---|
+| **Decision Overview** | Annualized trust score, selected-year comparison, low-trust months, risk drivers, and trips-vs-trust trend visuals |
+| **Ridership Arc** | Long-term yellow cab volume trend, peak/bottom months, COVID shock, and recovery context |
+| **COVID Impact** | 2020 month-by-month operating collapse and partial rebound |
+| **Fare Economics** | Fare, distance, and fare-per-mile interpretation |
+| **Seasonal Patterns** | Recurring monthly rhythm outside the COVID distortion |
+
+The LLM generates the narrative explanations. The charts and KPIs are deterministic outputs from the computed metrics, so the visual evidence is reproducible.
 
 ---
 
@@ -44,7 +58,7 @@ BigQuery via BigLake    ←── query engine
          ↓
     dbt Core            ←── quality metrics, schema diffs, trust scores
          ↓
-  Claude Haiku API      ←── generates trust narratives
+  OpenAI API            ←── generates trust narratives
          ↓
   Streamlit Cloud       ←── live public dashboard
 ```
@@ -97,8 +111,8 @@ The dataset has undergone three real schema changes that make it a perfect trust
 │   │   ├── quality/      # quality_metrics, schema_evolution
 │   │   └── trust/        # trust_scores
 │   └── tests/            # Data quality assertions
-├── enrichment/           # Claude Haiku LLM enrichment
-├── streamlit/            # Dashboard + 5 trust card components
+├── enrichment/           # OpenAI LLM enrichment
+├── dashboard/            # Streamlit app + trust/story components
 ├── airflow/              # DAG + Docker Compose
 ├── tests/                # Unit tests
 ├── docs/                 # Architecture docs
@@ -124,6 +138,17 @@ cd data-quality-pipeline-genAI
 cp .env.example .env
 # Fill in your values in .env
 ```
+
+Required local environment variables:
+
+| Variable | Purpose |
+|---|---|
+| `GCP_PROJECT_ID` | Google Cloud project that owns GCS and BigQuery resources |
+| `GCS_BUCKET` | Bucket used for Iceberg data |
+| `GCS_WAREHOUSE_PATH` | Iceberg warehouse path in GCS |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Local path to the service account JSON file |
+| `BQ_DATASET` | BigQuery dataset for dbt outputs and narratives |
+| `OPENAI_API_KEY` | API key used by the enrichment step |
 
 ### 2. Install dependencies
 
@@ -155,8 +180,21 @@ dbt run --profiles-dir dbt --project-dir dbt
 python -m enrichment.enricher
 
 # Launch the dashboard
-streamlit run streamlit/app.py
+streamlit run dashboard/app.py
 ```
+
+---
+
+## Remote Demo Deployment
+
+The easiest hosting path is Streamlit Community Cloud:
+
+1. Push the repo to GitHub.
+2. Create a Streamlit Community Cloud app from the repo.
+3. Use `dashboard/app.py` as the main file path.
+4. Add required secrets in Streamlit's app settings instead of committing `.env`.
+
+For a live BigQuery-backed demo, provide equivalent secrets for the variables above and configure Google credentials for the hosted environment. For a stable public portfolio demo, consider exporting the final BigQuery metrics and narratives to local files and letting the app read those. That avoids live credential issues and makes the demo faster and cheaper.
 
 ---
 
