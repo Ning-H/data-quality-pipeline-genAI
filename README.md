@@ -196,6 +196,38 @@ The easiest hosting path is Streamlit Community Cloud:
 
 For a live BigQuery-backed demo, provide equivalent secrets for the variables above and configure Google credentials for the hosted environment. For a stable public portfolio demo, consider exporting the final BigQuery metrics and narratives to local files and letting the app read those. That avoids live credential issues and makes the demo faster and cheaper.
 
+Local runs can keep using:
+
+```toml
+GOOGLE_APPLICATION_CREDENTIALS = "/path/to/service-account.json"
+```
+
+For Streamlit Cloud, use a nested service account secret instead of a local file path:
+
+```toml
+GCP_PROJECT_ID = "your-gcp-project-id"
+GCS_BUCKET = "your-gcs-bucket-name"
+GCS_WAREHOUSE_PATH = "gs://your-gcs-bucket-name/warehouse"
+BQ_DATASET = "nyc_taxi_trust"
+BQ_LOCATION = "US"
+OPENAI_API_KEY = "your-openai-api-key"
+
+[gcp_service_account]
+type = "service_account"
+project_id = "..."
+private_key_id = "..."
+private_key = "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+client_email = "..."
+client_id = "..."
+auth_uri = "https://accounts.google.com/o/oauth2/auth"
+token_uri = "https://oauth2.googleapis.com/token"
+auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs"
+client_x509_cert_url = "..."
+universe_domain = "googleapis.com"
+```
+
+The app automatically prefers the local `GOOGLE_APPLICATION_CREDENTIALS` path when it exists. If that path is absent and `[gcp_service_account]` is present, it creates a temporary credentials file for the hosted Streamlit process.
+
 ---
 
 ## Running Tests

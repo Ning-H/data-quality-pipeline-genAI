@@ -4,7 +4,10 @@ NYC Taxi Data Trust Layer — Streamlit Dashboard
 Entry point: streamlit run dashboard/app.py
 """
 
+import json
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 import streamlit as st
@@ -12,6 +15,55 @@ import streamlit as st
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+
+
+def configure_hosted_secrets():
+    """Bridge Streamlit Cloud secrets into env vars before app modules import settings."""
+    try:
+        secrets = dict(st.secrets)
+    except FileNotFoundError:
+        secrets = {}
+
+    for key in [
+        "GCP_PROJECT_ID",
+        "GCS_BUCKET",
+        "GCS_WAREHOUSE_PATH",
+        "BQ_DATASET",
+        "BQ_LOCATION",
+        "ICEBERG_CATALOG",
+        "ICEBERG_DATABASE",
+        "ICEBERG_TABLE",
+        "OPENAI_API_KEY",
+        "INGEST_TARGETS",
+    ]:
+        if not os.getenv(key) and key in secrets:
+            os.environ[key] = str(secrets[key])
+
+    local_credentials = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    if local_credentials and Path(local_credentials).exists():
+        return
+
+    if "gcp_service_account" not in secrets:
+        return
+
+    hosted_credentials = secrets["gcp_service_account"]
+    if isinstance(hosted_credentials, str):
+        credentials = json.loads(hosted_credentials)
+    else:
+        credentials = dict(hosted_credentials)
+    credentials_file = tempfile.NamedTemporaryFile(
+        mode="w",
+        suffix=".json",
+        prefix="gcp-service-account-",
+        delete=False,
+    )
+    with credentials_file:
+        json.dump(credentials, credentials_file)
+
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_file.name
+
+
+configure_hosted_secrets()
 
 from enrichment.enricher import get_narratives
 from enrichment.trust_scorer import get_quality_metrics, get_trust_metrics
