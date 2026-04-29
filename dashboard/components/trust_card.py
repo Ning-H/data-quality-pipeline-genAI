@@ -37,11 +37,11 @@ def render_trust_card(narrative: dict, metrics: dict | None = None):
     st.subheader("🛡️ Can You Trust This Data?")
     st.caption("Scored on completeness, volume anomaly, validity, and schema consistency.")
 
-    if not narrative:
+    if not narrative and not metrics:
         st.info("No trust narrative generated yet.")
         return
 
-    score = narrative.get("trust_score", 0)
+    score = (metrics or {}).get("trust_score", narrative.get("trust_score", 0))
     label = narrative.get("trust_label", "—")
     headline = narrative.get("headline", "—")
 
@@ -55,16 +55,36 @@ def render_trust_card(narrative: dict, metrics: dict | None = None):
             f"<h3 style='color:{color}'>{label}</h3>",
             unsafe_allow_html=True,
         )
+        if metrics:
+            st.write(
+                f"Computed across {metrics.get('months', 'the loaded')} month(s): "
+                f"{metrics.get('total_rows', 0):,.0f} trips, "
+                f"{metrics.get('low_trust_months', 0)} low-trust month(s), "
+                f"{metrics.get('low_volume_months', 0)} unusual-volume month(s)."
+            )
         st.write(headline)
 
     # Score breakdown
     st.markdown("**Score Breakdown**")
-    breakdown = narrative.get("score_breakdown", {})
     cols = st.columns(4)
-    dimensions = ["completeness", "volume_anomaly", "validity", "consistency"]
-    for i, dim in enumerate(dimensions):
+    dimensions = [
+        ("completeness", "Completeness"),
+        ("volume_anomaly", "Volume"),
+        ("validity", "Validity"),
+        ("consistency", "Consistency"),
+    ]
+    breakdown = narrative.get("score_breakdown", {})
+    metric_keys = {
+        "completeness": "completeness_score",
+        "volume_anomaly": "volume_anomaly_score",
+        "validity": "validity_score",
+        "consistency": "consistency_score",
+    }
+    for i, (dim, label_text) in enumerate(dimensions):
         with cols[i]:
-            st.markdown(f"**{dim.capitalize()}**")
+            st.markdown(f"**{label_text}**")
+            if metrics and metric_keys[dim] in metrics:
+                st.metric("Annual score", f"{metrics[metric_keys[dim]] * 10:.1f}/10")
             st.caption(breakdown.get(dim, "—"))
 
     # Red flags

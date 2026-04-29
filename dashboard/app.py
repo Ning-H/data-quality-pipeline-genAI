@@ -4,12 +4,21 @@ NYC Taxi Data Trust Layer — Streamlit Dashboard
 Entry point: streamlit run dashboard/app.py
 """
 
+import sys
+from pathlib import Path
+
 import streamlit as st
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from enrichment.enricher import get_narratives
 from enrichment.trust_scorer import get_quality_metrics, get_trust_metrics
 from dashboard.components.business_stories_card import render_business_stories_card
 from dashboard.components.context_card import render_context_card
 from dashboard.components.coverage_card import render_coverage_card
+from dashboard.components.insights_card import render_insights_card, summarize_year
 from dashboard.components.lineage_card import render_lineage_card
 from dashboard.components.schema_evolution_card import render_schema_evolution_card
 from dashboard.components.trust_card import render_trust_card
@@ -42,17 +51,17 @@ with st.sidebar:
     st.divider()
     st.markdown("""
     **5 Trust Dimensions**
-    1. Lineage — where did it come from?
-    2. Context — what is it?
-    3. Trust Score — can I rely on it?
-    4. Coverage Gaps — what's missing?
-    5. Schema Evolution — what changed?
+    - 🔗 Lineage — where did it come from?
+    - 📋 Context — what is it?
+    - 🛡️ Trust Score — can I rely on it?
+    - 🕳️ Coverage Gaps — what's missing?
+    - 📐 Schema Evolution — what changed?
 
     **4 Business Stories**
-    6. Ridership Arc — 7-year trend
-    7. COVID Impact — 2020 collapse
-    8. Fare Economics — price trends
-    9. Seasonal Patterns — annual rhythm
+    - 📉 Ridership Arc — 7-year trend
+    - 🦠 COVID Impact — 2020 collapse
+    - 💵 Fare Economics — price trends
+    - 📅 Seasonal Patterns — annual rhythm
     """)
 
     st.divider()
@@ -93,15 +102,15 @@ def load_business_stories() -> dict:
 
 
 @st.cache_data(ttl=300)
-def load_metrics(year: int) -> tuple[dict, list[dict]]:
-    metrics = get_trust_metrics(year)
-    all_metrics = get_quality_metrics()
-    return (metrics[0] if metrics else {}), all_metrics
+def load_metrics(year: int) -> tuple[dict, list[dict], list[dict]]:
+    trust_history = get_trust_metrics()
+    quality_history = get_quality_metrics()
+    return summarize_year(trust_history, year), trust_history, quality_history
 
 
 narratives = load_narratives(selected_year)
 business_stories = load_business_stories()
-metrics, all_metrics = load_metrics(selected_year)
+metrics, trust_history, quality_history = load_metrics(selected_year)
 
 # ── KPI strip ────────────────────────────────────────────────────────────────
 
@@ -121,7 +130,8 @@ st.divider()
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab0, tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "🎯 Overview",
     "🔗 Lineage",
     "📋 Context",
     "🛡️ Trust Score",
@@ -129,6 +139,9 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📐 Schema Evolution",
     "📈 Business Stories",
 ])
+
+with tab0:
+    render_insights_card(trust_history, selected_year)
 
 with tab1:
     render_lineage_card(narratives.get("lineage", {}))
@@ -143,7 +156,7 @@ with tab4:
     render_coverage_card(narratives.get("coverage_gaps", {}))
 
 with tab5:
-    render_schema_evolution_card(narratives.get("schema_evolution", {}), all_metrics)
+    render_schema_evolution_card(narratives.get("schema_evolution", {}), quality_history)
 
 with tab6:
     render_business_stories_card(
