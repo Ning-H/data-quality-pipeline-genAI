@@ -1,11 +1,11 @@
 /*
-  Quality metrics model — computes per-year statistics that feed
+  Quality metrics model — computes per-month statistics that feed
   directly into the LLM trust score generation.
 
-  Outputs one row per data_year with:
+  Outputs one row per (data_year, data_month) with:
     - null rates for every key column
     - value distribution stats
-    - timeliness gap (days since data was collected)
+    - period completeness score (did we capture a full month of trips?)
     - row count and completeness score
 */
 
@@ -13,9 +13,10 @@ WITH base AS (
     SELECT * FROM {{ ref('stg_yellow_trips') }}
 ),
 
-per_year AS (
+per_month AS (
     SELECT
         data_year,
+        data_month,
         schema_version,
         COUNT(*)                                                    AS total_rows,
 
@@ -44,12 +45,17 @@ per_year AS (
         -- Passenger stats
         ROUND(AVG(CAST(passenger_count AS FLOAT64)), 2)            AS avg_passenger_count,
 
-        -- Timeliness: days between the most recent trip and today
+        -- Active days: distinct days within the nominal month that had trips
+        COUNT(DISTINCT CASE
+            WHEN DATE(pickup_at) >= DATE(data_year, data_month, 1)
+             AND DATE(pickup_at) <  DATE_ADD(DATE(data_year, data_month, 1), INTERVAL 1 MONTH)
+            THEN DATE(pickup_at)
+        END)                                                       AS active_days,
         DATE_DIFF(
-            CURRENT_DATE(),
-            DATE(MAX(pickup_at)),
+            DATE_ADD(DATE(data_year, data_month, 1), INTERVAL 1 MONTH),
+            DATE(data_year, data_month, 1),
             DAY
-        )                                                          AS timeliness_days_lag,
+        )                                                          AS days_in_month,
 
         -- Date range of the data
         MIN(DATE(pickup_at))                                        AS earliest_trip_date,
@@ -66,11 +72,12 @@ per_year AS (
         MAX(ingested_at)                                           AS last_ingested_at
 
     FROM base
-    GROUP BY data_year, schema_version
+    GROUP BY data_year, data_month, schema_version
 )
 
 SELECT
     *,
+
     -- Composite completeness score: average non-null rate across key columns
     ROUND(
         1 - (
@@ -83,17 +90,19 @@ SELECT
         4
     ) AS completeness_score,
 
-    -- Timeliness score: measures data completeness within the recorded month.
-    -- For historical archives, "freshness" is meaningless — instead we score
-    -- how complete the month is (did we capture close to a full month of trips?).
-    -- Baseline: Jan 2015 had ~12.7M trips; we normalise against the busiest
-    -- partition we ingested. Capped at 1.0 to handle any outlier counts.
+    -- Volume anomaly score: how does this month compare to the avg for its schema era?
+    -- Score of 1.0 = normal volume; drops toward 0 for months with unusually few trips.
+    -- Flags COVID collapse (Apr 2020: ~96% below era avg), schema transition months, etc.
+    -- Capped at 1.0 so above-average months don't inflate the score.
     ROUND(
-        LEAST(1.0, GREATEST(0.0, 1.0 - CAST(timeliness_days_lag AS FLOAT64) / 730.0)),
+        LEAST(1.0, SAFE_DIVIDE(
+            CAST(total_rows AS FLOAT64),
+            AVG(CAST(total_rows AS FLOAT64)) OVER (PARTITION BY schema_version)
+        )),
         4
-    ) AS timeliness_score,
+    ) AS volume_anomaly_score,
 
     CURRENT_TIMESTAMP() AS computed_at
 
-FROM per_year
-ORDER BY data_year
+FROM per_month
+ORDER BY data_year, data_month

@@ -35,7 +35,7 @@ def _gauge(score: float, label: str) -> go.Figure:
 
 def render_trust_card(narrative: dict, metrics: dict | None = None):
     st.subheader("🛡️ Can You Trust This Data?")
-    st.caption("Scored on reliability, timeliness, accuracy — with a plain-English explanation of why.")
+    st.caption("Scored on completeness, volume anomaly, validity, and schema consistency.")
 
     if not narrative:
         st.info("No trust narrative generated yet.")
@@ -61,7 +61,7 @@ def render_trust_card(narrative: dict, metrics: dict | None = None):
     st.markdown("**Score Breakdown**")
     breakdown = narrative.get("score_breakdown", {})
     cols = st.columns(4)
-    dimensions = ["completeness", "timeliness", "validity", "consistency"]
+    dimensions = ["completeness", "volume_anomaly", "validity", "consistency"]
     for i, dim in enumerate(dimensions):
         with cols[i]:
             st.markdown(f"**{dim.capitalize()}**")

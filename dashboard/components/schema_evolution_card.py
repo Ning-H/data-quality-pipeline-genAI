@@ -41,24 +41,39 @@ def render_schema_evolution_card(narrative: dict, metrics_by_year: list[dict] | 
     if recommended:
         st.success(f"**Recommended action:** {recommended}")
 
-    # Optional: row count by year bar chart
+    # Row count by month, colored by schema version
     if metrics_by_year:
-        years = [m["data_year"] for m in metrics_by_year]
-        rows = [m["total_rows"] for m in metrics_by_year]
-        schema_versions = [m["schema_version"] for m in metrics_by_year]
+        version_colors = {
+            v: c for v, c in zip(
+                sorted({m["schema_version"] for m in metrics_by_year}),
+                ["#3498db", "#2ecc71", "#f39c12", "#e74c3c", "#9b59b6", "#1abc9c"],
+            )
+        }
+        periods = [f"{m['data_year']}-{m['data_month']:02d}" for m in metrics_by_year]
+        rows_   = [m["total_rows"] for m in metrics_by_year]
+        colors  = [version_colors.get(m["schema_version"], "#95a5a6") for m in metrics_by_year]
 
         fig = go.Figure(go.Bar(
-            x=years,
-            y=rows,
-            text=schema_versions,
-            textposition="outside",
-            marker_color=["#3498db", "#2ecc71", "#f39c12", "#e74c3c"][:len(years)],
+            x=periods,
+            y=rows_,
+            marker_color=colors,
+            hovertemplate="%{x}<br>%{y:,} trips<extra></extra>",
         ))
+        # Add invisible legend traces for schema versions
+        for version, color in version_colors.items():
+            fig.add_trace(go.Bar(
+                x=[None], y=[None],
+                name=version,
+                marker_color=color,
+                showlegend=True,
+            ))
         fig.update_layout(
-            title="Row Count by Year (colored by schema version)",
-            xaxis_title="Year",
-            yaxis_title="Row Count",
-            height=300,
+            title="Monthly Trip Count by Schema Version",
+            xaxis_title="Year-Month",
+            yaxis_title="Trips",
+            height=350,
             margin=dict(t=40, b=20),
+            legend_title="Schema Version",
+            barmode="overlay",
         )
         st.plotly_chart(fig, use_container_width=True)

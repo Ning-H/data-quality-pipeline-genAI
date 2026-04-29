@@ -26,7 +26,7 @@ def get_trust_metrics(year: int | None = None) -> list[dict]:
         SELECT *
         FROM `{settings.GCP_PROJECT_ID}.{settings.BQ_DATASET}.trust_scores`
         {"WHERE data_year = @year" if year else ""}
-        ORDER BY data_year
+        ORDER BY data_year, data_month
     """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[bigquery.ScalarQueryParameter("year", "INT64", year)]

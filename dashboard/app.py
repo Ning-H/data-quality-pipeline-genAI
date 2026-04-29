@@ -1,18 +1,18 @@
 """
 NYC Taxi Data Trust Layer — Streamlit Dashboard
 
-Entry point: streamlit run streamlit/app.py
+Entry point: streamlit run dashboard/app.py
 """
-
 
 import streamlit as st
 from enrichment.enricher import get_narratives
 from enrichment.trust_scorer import get_quality_metrics, get_trust_metrics
-from streamlit.components.context_card import render_context_card
-from streamlit.components.coverage_card import render_coverage_card
-from streamlit.components.lineage_card import render_lineage_card
-from streamlit.components.schema_evolution_card import render_schema_evolution_card
-from streamlit.components.trust_card import render_trust_card
+from dashboard.components.business_stories_card import render_business_stories_card
+from dashboard.components.context_card import render_context_card
+from dashboard.components.coverage_card import render_coverage_card
+from dashboard.components.lineage_card import render_lineage_card
+from dashboard.components.schema_evolution_card import render_schema_evolution_card
+from dashboard.components.trust_card import render_trust_card
 
 # ── Page config ───────────────────────────────────────────────────────────────
 
@@ -28,10 +28,10 @@ st.set_page_config(
 with st.sidebar:
     st.title("🚕 NYC Taxi")
     st.markdown("### Data Trust Layer")
-    st.caption("Powered by Apache Iceberg · BigQuery · Claude AI")
+    st.caption("Powered by Apache Iceberg · BigQuery · OpenAI")
     st.divider()
 
-    available_years = [2015, 2017, 2019, 2022]
+    available_years = [2015, 2016, 2019, 2020, 2022]
     selected_year = st.selectbox(
         "Select data year",
         options=available_years,
@@ -47,11 +47,17 @@ with st.sidebar:
     3. Trust Score — can I rely on it?
     4. Coverage Gaps — what's missing?
     5. Schema Evolution — what changed?
+
+    **4 Business Stories**
+    6. Ridership Arc — 7-year trend
+    7. COVID Impact — 2020 collapse
+    8. Fare Economics — price trends
+    9. Seasonal Patterns — annual rhythm
     """)
 
     st.divider()
     st.caption("Source: NYC TLC Trip Record Data")
-    st.caption("Pipeline: PySpark → Iceberg → BigQuery → dbt → Claude Haiku")
+    st.caption("Pipeline: PyArrow → Iceberg → BigQuery → dbt → GPT-4o mini")
 
 # ── Header ────────────────────────────────────────────────────────────────────
 
@@ -77,6 +83,16 @@ def load_narratives(year: int) -> dict:
 
 
 @st.cache_data(ttl=300)
+def load_business_stories() -> dict:
+    story_points = ["volume_trends", "covid_impact", "fare_evolution", "seasonal_patterns"]
+    result = {}
+    for sp in story_points:
+        rows = get_narratives(pain_point=sp)
+        result[sp] = rows[0]["narrative"] if rows else {}
+    return result
+
+
+@st.cache_data(ttl=300)
 def load_metrics(year: int) -> tuple[dict, list[dict]]:
     metrics = get_trust_metrics(year)
     all_metrics = get_quality_metrics()
@@ -84,31 +100,34 @@ def load_metrics(year: int) -> tuple[dict, list[dict]]:
 
 
 narratives = load_narratives(selected_year)
+business_stories = load_business_stories()
 metrics, all_metrics = load_metrics(selected_year)
 
 # ── KPI strip ────────────────────────────────────────────────────────────────
 
-trust_score = metrics.get("trust_score", 0)
-total_rows = metrics.get("total_rows", 0)
-completeness = metrics.get("completeness_score", 0)
-timeliness = metrics.get("timeliness_score", 0)
+trust_score    = metrics.get("trust_score", 0)
+total_rows     = metrics.get("total_rows", 0)
+completeness   = metrics.get("completeness_score", 0)
+volume_anomaly = metrics.get("volume_anomaly_score", 0)
 
 k1, k2, k3, k4 = st.columns(4)
-k1.metric("Trust Score", f"{trust_score * 10:.1f} / 10")
-k2.metric("Total Trips", f"{total_rows:,.0f}")
-k3.metric("Completeness", f"{completeness * 100:.1f}%")
-k4.metric("Timeliness Score", f"{timeliness * 100:.1f}%")
+k1.metric("Trust Score",      f"{trust_score * 10:.1f} / 10")
+k2.metric("Total Trips",      f"{total_rows:,.0f}")
+k3.metric("Completeness",     f"{completeness * 100:.1f}%")
+k4.metric("Volume Anomaly",   f"{volume_anomaly * 100:.1f}%",
+          help="100% = normal volume vs schema-era average. Low = anomalous month (COVID, truncation).")
 
 st.divider()
 
-# ── Five trust cards ──────────────────────────────────────────────────────────
+# ── Tabs ──────────────────────────────────────────────────────────────────────
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "🔗 Lineage",
     "📋 Context",
     "🛡️ Trust Score",
     "🕳️ Coverage Gaps",
     "📐 Schema Evolution",
+    "📈 Business Stories",
 ])
 
 with tab1:
@@ -125,3 +144,11 @@ with tab4:
 
 with tab5:
     render_schema_evolution_card(narratives.get("schema_evolution", {}), all_metrics)
+
+with tab6:
+    render_business_stories_card(
+        volume_narrative=business_stories.get("volume_trends", {}),
+        covid_narrative=business_stories.get("covid_impact", {}),
+        fare_narrative=business_stories.get("fare_evolution", {}),
+        seasonal_narrative=business_stories.get("seasonal_patterns", {}),
+    )
