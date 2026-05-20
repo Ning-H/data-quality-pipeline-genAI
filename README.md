@@ -13,7 +13,7 @@
 
 ## Live Demo
 
-**[ning-h-data-quality-pipeline-genai.streamlit.app](https://ning-h-data-quality-pipeline-genai.streamlit.app)**
+**[ning-h-data-quality-pipeline-genai.streamlit.app]([https://data-quality-pipeline-genai-ninghan.streamlit.app/])**
 
 ---
 
