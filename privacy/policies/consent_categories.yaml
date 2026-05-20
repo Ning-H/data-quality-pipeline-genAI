@@ -1,0 +1,17 @@
+consent_categories:
+  ml_training:
+    description: Use transformed trip features to train or evaluate ML models.
+    default_opt_in_rate: 0.8
+    allowed_outputs:
+      - mart_ml_training_safe
+  analytics:
+    description: Use k-anonymized aggregate rows for business analytics.
+    default_opt_in_rate: 0.9
+    allowed_outputs:
+      - mart_analytics_safe
+  operational:
+    description: Use trip records for payment, support, fraud, and legal operations.
+    default_opt_in_rate: 1.0
+    allowed_outputs:
+      - access_request_exports
+

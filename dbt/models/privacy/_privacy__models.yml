@@ -1,0 +1,73 @@
+version: 2
+
+models:
+  - name: stg_pii_inventory
+    description: "Policy-as-code PII inventory for NYC taxi staging columns."
+    columns:
+      - name: column_name
+        tests:
+          - not_null
+      - name: pii_type
+        tests:
+          - not_null
+          - accepted_values:
+              values:
+                - operational_identifier
+                - quasi_identifier
+                - location_trace
+                - financial_attribute
+      - name: handling
+        tests:
+          - accepted_values:
+              values:
+                - pseudonymize
+                - generalize
+                - suppress
+                - aggregate
+
+  - name: int_reidentification_risk
+    description: "Trip-level k-anonymity scoring over location and time quasi-identifiers."
+    columns:
+      - name: trip_id
+        tests:
+          - not_null
+      - name: k_anonymity
+        tests:
+          - not_null
+      - name: risk_level
+        tests:
+          - accepted_values:
+              values: ["critical", "high", "moderate", "low"]
+
+  - name: int_consent_joined
+    description: "Synthetic consent flags joined to trip-level privacy risk scores."
+    columns:
+      - name: trip_id
+        tests:
+          - not_null
+      - name: consent_source
+        tests:
+          - accepted_values:
+              values: ["synthetic_demo"]
+
+  - name: mart_ml_training_safe
+    description: "Privacy-transformed row-level mart for consented ML training use cases."
+    columns:
+      - name: trip_pseudonym
+        tests:
+          - not_null
+          - unique
+      - name: k_anonymity
+        tests:
+          - not_null
+
+  - name: mart_analytics_safe
+    description: "k-anonymized aggregate analytics mart with no row-level trip records."
+    columns:
+      - name: trip_count
+        tests:
+          - not_null
+      - name: minimum_trip_k
+        tests:
+          - not_null
+

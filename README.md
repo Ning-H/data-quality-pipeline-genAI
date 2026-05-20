@@ -43,6 +43,29 @@ This pipeline ingests NYC yellow cab trip data across multiple schema eras, trac
 
 The LLM generates the narrative explanations. The charts and KPIs are deterministic outputs from the computed metrics, so the visual evidence is reproducible.
 
+### Privacy & Compliance Layer
+
+This repo also includes a privacy controls layer that treats taxi trips as consumer-adjacent data because location, time, payment type, and fare fields can act as quasi-identifiers.
+
+Warehouse outputs for this layer are isolated in the BigQuery dataset `nyc_taxi_privacy_layer` so privacy marts and compliance artifacts are separated from the core `nyc_taxi_trust` quality layer.
+
+| Control | Implementation |
+|---|---|
+| **PII inventory** | `privacy/policies/pii_policy.yaml`, `privacy/pii_inventory.py`, `dbt/models/privacy/stg_pii_inventory.sql` |
+| **Re-identification risk** | k-anonymity scoring in `privacy/reidentification_risk.py` and `dbt/models/privacy/int_reidentification_risk.sql` |
+| **Privacy transformations** | Pseudonymization, time generalization, location suppression in `privacy/transformations.py` |
+| **Consent gating** | Synthetic consent categories in `privacy/consent_layer.py` and `dbt/models/privacy/int_consent_joined.sql` |
+| **Safe marts** | `mart_ml_training_safe` and `mart_analytics_safe` with dbt privacy invariant tests |
+| **Data subject requests** | GDPR Article 15 access, Article 17 erasure, and CCPA deletion patterns in `privacy/dsr_handler.py` |
+| **Auditability** | Append-only privacy events in `privacy/audit_log.py` |
+
+Privacy docs:
+
+- [`docs/PRIVACY_POLICY.md`](docs/PRIVACY_POLICY.md)
+- [`docs/GDPR_MAPPING.md`](docs/GDPR_MAPPING.md)
+- [`docs/REIDENTIFICATION_RISK.md`](docs/REIDENTIFICATION_RISK.md)
+- [`docs/CONSENT_MODEL.md`](docs/CONSENT_MODEL.md)
+
 ---
 
 ## Architecture
@@ -57,6 +80,8 @@ Apache Iceberg on GCS  ←── schema versioning, time travel
 BigQuery via BigLake    ←── query engine
          ↓
     dbt Core            ←── quality metrics, schema diffs, trust scores
+         ↓
+ Privacy Controls      ←── PII inventory, k-anonymity, consent, safe marts
          ↓
   OpenAI API            ←── generates trust narratives
          ↓
@@ -113,6 +138,7 @@ The dataset has undergone three real schema changes that make it a perfect trust
 │   └── tests/            # Data quality assertions
 ├── enrichment/           # OpenAI LLM enrichment
 ├── dashboard/            # Streamlit app + trust/story components
+├── privacy/              # Policy-as-code privacy controls, DSR handlers, audit log
 ├── airflow/              # DAG + Docker Compose
 ├── tests/                # Unit tests
 ├── docs/                 # Architecture docs

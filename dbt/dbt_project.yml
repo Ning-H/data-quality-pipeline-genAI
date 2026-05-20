@@ -20,3 +20,6 @@ models:
     trust:
       +materialized: table
       +dataset: nyc_taxi_trust
+    privacy:
+      +materialized: table
+      +dataset: nyc_taxi_privacy_layer

@@ -1,0 +1,86 @@
+dataset: nyc_taxi.yellow_trips
+description: >
+  Policy-as-code inventory for direct identifiers, quasi-identifiers, and
+  sensitive attributes in NYC TLC yellow taxi trip data.
+regulatory_basis:
+  - GDPR Article 5: data minimization, purpose limitation, storage limitation
+  - GDPR Article 25: data protection by design and by default
+  - CCPA Section 1798.105: deletion rights
+
+columns:
+  vendor_id:
+    pii_type: operational_identifier
+    sensitivity: low
+    handling: pseudonymize
+    rationale: Vendor IDs identify service providers rather than riders, but should not be used as direct ML features without review.
+  pickup_at:
+    pii_type: quasi_identifier
+    sensitivity: high
+    handling: generalize
+    generalization: hour_bucket
+    rationale: Trip timestamps can be linked to known routines or public sightings.
+  dropoff_at:
+    pii_type: quasi_identifier
+    sensitivity: high
+    handling: generalize
+    generalization: hour_bucket
+    rationale: Trip timestamps can be linked to known routines or public sightings.
+  pickup_longitude:
+    pii_type: location_trace
+    sensitivity: high
+    handling: suppress
+    rationale: Pre-2016 precise pickup coordinates are re-identification risk.
+  pickup_latitude:
+    pii_type: location_trace
+    sensitivity: high
+    handling: suppress
+    rationale: Pre-2016 precise pickup coordinates are re-identification risk.
+  dropoff_longitude:
+    pii_type: location_trace
+    sensitivity: high
+    handling: suppress
+    rationale: Pre-2016 precise dropoff coordinates are re-identification risk.
+  dropoff_latitude:
+    pii_type: location_trace
+    sensitivity: high
+    handling: suppress
+    rationale: Pre-2016 precise dropoff coordinates are re-identification risk.
+  pu_location_id:
+    pii_type: quasi_identifier
+    sensitivity: medium
+    handling: generalize
+    generalization: zone_id
+    rationale: Zone-level pickup locations are less precise than GPS but still linkable with time.
+  do_location_id:
+    pii_type: quasi_identifier
+    sensitivity: medium
+    handling: generalize
+    generalization: zone_id
+    rationale: Zone-level dropoff locations are less precise than GPS but still linkable with time.
+  payment_type:
+    pii_type: quasi_identifier
+    sensitivity: medium
+    handling: generalize
+    rationale: Payment behavior can increase uniqueness when combined with location and time.
+  fare_amount:
+    pii_type: financial_attribute
+    sensitivity: medium
+    handling: aggregate
+    rationale: Fare amounts are not direct PII but can strengthen linkage attacks.
+  tip_amount:
+    pii_type: financial_attribute
+    sensitivity: medium
+    handling: aggregate
+    rationale: Tip amounts can be distinctive in small equivalence classes.
+  total_amount:
+    pii_type: financial_attribute
+    sensitivity: medium
+    handling: aggregate
+    rationale: Total amounts can be distinctive in small equivalence classes.
+
+defaults:
+  pii_type: non_pii
+  sensitivity: low
+  handling: retain
+  rationale: Not listed as a direct identifier or quasi-identifier under this policy.
+

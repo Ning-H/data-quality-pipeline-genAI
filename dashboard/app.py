@@ -12,6 +12,13 @@ from pathlib import Path
 
 import streamlit as st
 
+st.set_page_config(
+    page_title="NYC Taxi Data Trust Layer",
+    page_icon="🚕",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -72,17 +79,9 @@ from dashboard.components.context_card import render_context_card
 from dashboard.components.coverage_card import render_coverage_card
 from dashboard.components.insights_card import render_insights_card, summarize_year
 from dashboard.components.lineage_card import render_lineage_card
+from dashboard.components.privacy_compliance_card import render_privacy_compliance_card
 from dashboard.components.schema_evolution_card import render_schema_evolution_card
 from dashboard.components.trust_card import render_trust_card
-
-# ── Page config ───────────────────────────────────────────────────────────────
-
-st.set_page_config(
-    page_title="NYC Taxi Data Trust Layer",
-    page_icon="🚕",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 
@@ -114,6 +113,12 @@ with st.sidebar:
     - 🦠 COVID Impact — 2020 collapse
     - 💵 Fare Economics — price trends
     - 📅 Seasonal Patterns — annual rhythm
+
+    **4 Privacy & Compliance Controls**
+    - 🔐 PII Inventory — what needs protection?
+    - 🔎 Re-identification Risk — where is linkage possible?
+    - 🧾 DSR Demo — access, erasure, consent withdrawal
+    - 📜 Audit Log — what actions were recorded?
     """)
 
     st.divider()
@@ -182,7 +187,7 @@ st.divider()
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 
-tab0, tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "🎯 Overview",
     "🔗 Lineage",
     "📋 Context",
@@ -190,6 +195,7 @@ tab0, tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "🕳️ Coverage Gaps",
     "📐 Schema Evolution",
     "📈 Business Stories",
+    "🔐 Privacy & Compliance",
 ])
 
 with tab0:
@@ -217,3 +223,6 @@ with tab6:
         fare_narrative=business_stories.get("fare_evolution", {}),
         seasonal_narrative=business_stories.get("seasonal_patterns", {}),
     )
+
+with tab7:
+    render_privacy_compliance_card()

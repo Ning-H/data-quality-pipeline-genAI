@@ -1,0 +1,33 @@
+retention_policy:
+  raw_trip_events:
+    window_days: 365
+    applies_to:
+      - pickup_at
+      - dropoff_at
+      - pickup_longitude
+      - pickup_latitude
+      - dropoff_longitude
+      - dropoff_latitude
+    action_after_window: suppress_or_aggregate
+    legal_basis: GDPR Article 5 storage limitation
+  transformed_ml_features:
+    window_days: 730
+    applies_to:
+      - trip_hour
+      - pickup_zone_bucket
+      - dropoff_zone_bucket
+      - trip_distance_miles
+      - fare_amount
+    action_after_window: expire_from_training
+    legal_basis: GDPR Article 25 privacy by design
+  privacy_audit_log:
+    window_days: 2555
+    applies_to:
+      - event_id
+      - event_type
+      - gdpr_article
+      - ccpa_section
+      - details_json
+    action_after_window: archive
+    legal_basis: GDPR Article 30 records of processing activities
+

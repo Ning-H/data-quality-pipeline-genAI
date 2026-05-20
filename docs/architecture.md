@@ -21,6 +21,7 @@ A column full of nulls might mean a pipeline failure. Or it might mean a schema 
 | 3 | **Trust signals** | Scored on reliability, timeliness, completeness + narrative explanation of *why* in business language |
 | 4 | **Coverage gaps** | Surfaces what the dataset cannot answer that people assume it can |
 | 5 | **Schema evolution** | Detects column changes across versions, explains downstream impact, flags structural nulls |
+| 6 | **Privacy controls** | Maps quasi-identifiers to policy controls, scores re-identification risk, gates ML/analytics outputs by consent, and records DSR/audit activity |
 
 ---
 
@@ -64,8 +65,19 @@ A column full of nulls might mean a pipeline failure. Or it might mean a schema 
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────────┐
+│                 PRIVACY CONTROLS LAYER                      │
+│                  Python + dbt + BigQuery                    │
+│  - Policy-as-code PII inventory                             │
+│  - k-anonymity re-identification risk scoring               │
+│  - Synthetic consent gating for ML and analytics            │
+│  - Privacy-safe marts with dbt invariant tests              │
+│  - GDPR/CCPA DSR handlers + append-only audit events        │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
 │                  LLM ENRICHMENT LAYER                       │
-│                  Claude Haiku API                           │
+│                  OpenAI API                                 │
 │  - Reads quality_metrics + schema_evolution + sample rows   │
 │  - Generates: lineage narrative, dataset summary,           │
 │    trust score explanation, coverage gaps, schema impact    │
@@ -77,6 +89,7 @@ A column full of nulls might mean a pipeline failure. Or it might mean a schema 
 │                  VISUALIZATION LAYER                        │
 │                      Streamlit                              │
 │  - 5 trust cards (one per pain point)                       │
+│  - Privacy & Compliance page                                │
 │  - Schema evolution timeline                                │
 │  - Trust score with narrative                               │
 │  - Coverage gap bullets                                     │
@@ -100,8 +113,9 @@ A column full of nulls might mean a pipeline failure. Or it might mean a schema 
 2. **PySpark** pulls TLC files (CSV pre-2022, Parquet post-2022), normalizes to a unified schema, writes to **Iceberg on GCS**, logs lineage metadata to BigQuery
 3. **BigQuery** reads the Iceberg table via **BigLake** external tables
 4. **dbt** runs transformation models — computes null rates, schema diffs, timeliness gaps, value distributions
-5. **Python enrichment script** samples the data + dbt outputs → sends to **Claude Haiku** → gets back trust narratives → writes to BigQuery
-6. **Streamlit** reads the trust narratives and quality metrics → renders the live public dashboard
+5. **Privacy controls layer** inventories quasi-identifiers, scores k-anonymity risk, gates rows by synthetic consent, and builds privacy-safe marts
+6. **Python enrichment script** samples the data + dbt outputs → sends to **OpenAI API** → gets back trust narratives → writes to BigQuery
+7. **Streamlit** reads the trust narratives, quality metrics, and privacy demo artifacts → renders the live public dashboard
 
 ---
 
@@ -115,10 +129,11 @@ A column full of nulls might mean a pipeline failure. Or it might mean a schema 
 | Warehouse | **BigQuery + BigLake** | Query Iceberg tables, run dbt models | Free tier |
 | Transforms | **dbt Core** | Quality metrics, schema diffs, lineage models | Free |
 | Orchestration | **Apache Airflow** (Docker) | Schedule and monitor the full pipeline | Free (local) |
-| LLM | **Claude Haiku API** | Generate all trust narratives | ~$0.01–0.05 per run |
+| Privacy controls | **Python + dbt** | PII inventory, k-anonymity, consent, DSR, audit log | Free |
+| LLM | **OpenAI API** | Generate all trust narratives | ~$0.01–0.05 per run |
 | Visualization | **Streamlit Cloud** | Live public trust dashboard | Free |
 | CI/CD | **GitHub Actions** | Tests, linting, pipeline validation | Free tier |
-| Language | **Python 3.11** | Everything | Free |
+| Language | **Python 3.12** | Everything | Free |
 
 ---
 
@@ -149,14 +164,16 @@ This dataset passes every quality check and still cannot answer the most obvious
 sideproject1/
 ├── config/               # Environment settings
 ├── ingestion/            # PySpark ingestion + lineage tracking
-├── dbt/                  # dbt models (staging, quality, trust)
+├── dbt/                  # dbt models (staging, quality, trust, privacy)
 │   ├── models/
 │   │   ├── staging/      # Staging view over Iceberg BigLake table
 │   │   ├── quality/      # quality_metrics, schema_evolution
-│   │   └── trust/        # trust_scores (composite score per year)
+│   │   ├── trust/        # trust_scores (composite score per year)
+│   │   └── privacy/      # PII inventory, risk scoring, consent, safe marts
 │   └── tests/            # dbt data quality assertions
-├── enrichment/           # Claude Haiku LLM enrichment layer
-├── streamlit/            # Streamlit dashboard + 5 trust card components
+├── enrichment/           # OpenAI LLM enrichment layer
+├── privacy/              # Privacy policy, transformations, DSR, audit log
+├── dashboard/            # Streamlit dashboard + trust/privacy pages
 ├── airflow/              # Airflow DAG + Docker Compose
 ├── tests/                # Python unit tests
 └── .github/workflows/    # CI/CD (GitHub Actions)
